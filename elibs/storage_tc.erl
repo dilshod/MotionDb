@@ -1,8 +1,5 @@
 -module(storage_tc).
--export([start/1, sync/1, put/4, get/3, remove/2, remove/3]).
-
--define(SYNC_INTERVAL, 1000).
--define(SYNC_RECORDS, 2000).
+-export([start/1, close/1, sync/1, put/4, get/3, remove/2, remove/3]).
 
 -define(OPEN, 0).
 -define(CLOSE, 1).
@@ -31,6 +28,9 @@ start(Path) ->
       {error, Msg}
   end.
 
+close(Port) ->
+  call(Port, ?CLOSE, []).
+
 sync(Port) ->
   call(Port, ?SYNC, []).
 
@@ -53,8 +53,8 @@ get(Port, Key, true) ->
 remove(Port, Key) ->
   call(Port, ?REMOVE, binarize(Key)).
 
-remove(Port, Key, _Value) ->
-  call(Port, ?REMOVE, binarize(Key)).
+remove(Port, Key, Value) ->
+  call(Port, ?REMOVE, {binarize(Key), term_to_binary(Value)}).
 
 %%
 %% intrnal functions

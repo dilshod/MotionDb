@@ -234,7 +234,7 @@ static int control(ErlDrvData handle, unsigned int command, char* buf, int count
       break;
 
     case REMOVE:
-      // remove(Keys::list()), remove(Key::binary())
+      // remove(Keys::list()), remove(Key::binary()), remove({Key::binary(), Value::binary()})
       ei_get_type(buf, &index, &tp, &sz);
       if (tp == ERL_LIST_EXT) {
         int count, j;
@@ -247,9 +247,47 @@ static int control(ErlDrvData handle, unsigned int command, char* buf, int count
           if (!tcbdbout3(bdb, &key[0], key_size))
             return ei_error(&x, tcbdberrmsg(tcbdbecode(bdb)), res, res_size);
         }
+        ei_x_encode_atom(&x, "ok");
       } else if (tp == ERL_BINARY_EXT && sz <= MAX_KEY_SIZE) {
         ei_decode_binary(buf, &index, &key[0], &key_size);
         tcbdbout3(bdb, &key[0], key_size);
+        ei_x_encode_atom(&x, "ok");
+      } else if (tp == ERL_SMALL_TUPLE_EXT && sz == 2) {
+        ei_decode_tuple_header(buf, &index, &sz);
+        // get key
+        ei_get_type(buf, &index, &tp, &sz);
+        if (tp != ERL_BINARY_EXT || sz > MAX_KEY_SIZE)
+          return ei_error(&x, "invalid_argument", res, res_size);
+        ei_decode_binary(buf, &index, &key[0], &key_size);
+        // get value
+        ei_get_type(buf, &index, &tp, &sz);
+        if (tp != ERL_BINARY_EXT || sz > MAX_VALUE_SIZE)
+          return ei_error(&x, "invalid_argument", res, res_size);
+        ei_decode_binary(buf, &index, &value[0], &value_size);
+        // remove by key&value
+        BDBCUR *cur = tcbdbcurnew(bdb);
+        if (!tcbdbcurjump(cur, &key[0], key_size))
+          return ei_error(&x, "record_not_found", res, res_size);
+        
+        bool removed = false, not_found = false;
+        while (!removed && !not_found) {
+          int cur_key_size, cur_val_size;
+          const void *curkey = tcbdbcurkey3(cur, &cur_key_size);
+          printf("%p %p \r\n", curkey, key);
+          if (cur_key_size == key_size && memcmp(curkey, key, key_size) == 0) {
+            const void *curval = tcbdbcurval3(cur, &cur_val_size);
+            if (cur_val_size == value_size && memcmp(curval, value, value_size) == 0) {
+              printf("Removed\r\n");
+              tcbdbcurout(cur);
+              removed = true;
+            } else
+              if (!tcbdbcurnext(cur))
+                not_found = true;
+          } else not_found = true;
+        }
+        if (not_found) ei_x_encode_atom(&x, "not_found");
+        else ei_x_encode_atom(&x, "ok");
+        
       } else
         return ei_error(&x, "invalid_argument", res, res_size);
       break;

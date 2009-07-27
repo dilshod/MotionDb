@@ -1,8 +1,6 @@
 -module(mdb_app).
 -behaviour(application).
 
--include("../include/mdb.hrl").
-
 %% Application callbacks
 -export([start/2, stop/1]).
 

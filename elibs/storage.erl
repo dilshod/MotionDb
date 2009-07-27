@@ -6,7 +6,6 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3, sync/2]).
 
 -define(SYNC_TIMEOUT, 2000).
--define(SYNC_INTERVAL, 20000).
 
 -record(ulog, {
   file,
@@ -160,7 +159,8 @@ handle_info(timeout, State = #state{ulog=ULog, storage=Storage, storage_instance
 handle_info(_Info, State) ->
   {noreply, State, State#state.sync_timeout}.
 
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{storage=Storage, storage_instance=StorageInstance}) ->
+  Storage:close(StorageInstance),
   ok.
 
 code_change(_OldVsn, State, _Extra) ->
