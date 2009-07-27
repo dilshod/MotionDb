@@ -1,0 +1,40 @@
+
+Milestone for 0.0.1 version
+====
+
+a. Storages
+  1. Tokyocabinet storage
+  2. Dets storage
+  3. Replication
+  4. Synchronization
+  5. Storage API for removing records
+  6. Implement master-slave replication access, it should choose another active slave if master fails
+  7. Join node to replication on the fly
+  8. Write unit tests for storages
+
+b. Router
+  1. Implement mediator
+  2. Write unit tests for routing
+
+c. Paritition
+  1. Create new partitions on the fly
+  2. Write unit tests for partitioning
+
+d. Interfaces
+  1. Erlang API
+  2. Write unit tests for erlang api
+
+
+Milestones for 0.0.2 version
+====
+
+a. Storages
+  1. Integrate Lua
+
+b. Router
+
+c. Partition
+
+d. Interfaces
+  1. HTTP/json interface
+  2. MapReduce

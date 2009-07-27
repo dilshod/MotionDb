@@ -48,8 +48,9 @@ int ei_error(ei_x_buff *x, const char *error, char** res, int res_size) {
   return n;
 };
 
+/*
 bool putdup(TCBDB *bdb, char *key, int key_size, char *value, int value_size) {
-/*  int sz;
+  int sz;
   const char *value_tmp;
   TCLIST *vals = tcbdbget4(bdb, key, key_size);
   if (vals) {
@@ -62,10 +63,10 @@ bool putdup(TCBDB *bdb, char *key, int key_size, char *value, int value_size) {
       }
     }
     tclistdel(vals);
-  }*/
+  }
   return tcbdbputdup(bdb, key, key_size, value, value_size);
 };
-
+*/
 
 //=======================================================================
 // ERL_DRIVER CALLBACKS
@@ -163,7 +164,7 @@ static int control(ErlDrvData handle, unsigned int command, char* buf, int count
         if (command == PUT)
           rs = tcbdbput(bdb, &key[0], key_size, &value[0], value_size);
         else if (command == PUTDUP)
-          rs = putdup(bdb, &key[0], key_size, &value[0], value_size);
+          rs = tcbdbputdup(bdb, &key[0], key_size, &value[0], value_size);
         else if (command == PUTCAT)
           rs = tcbdbputcat(bdb, &key[0], key_size, &value[0], value_size);
         else
@@ -175,7 +176,7 @@ static int control(ErlDrvData handle, unsigned int command, char* buf, int count
           if (command == PUT)
             rs = tcbdbput(bdb, &key[0], key_size, p, value_size);
           else if (command == PUTDUP)
-            rs = putdup(bdb, &key[0], key_size, p, value_size);
+            rs = tcbdbputdup(bdb, &key[0], key_size, p, value_size);
           else if (command == PUTCAT)
             rs = tcbdbputcat(bdb, &key[0], key_size, p, value_size);
           else
