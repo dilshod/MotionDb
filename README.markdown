@@ -4,11 +4,11 @@ MotionDB
 
 Another amazon dynamo like storage based on tokyocabinet
 
-http://tokyocabinet.sourceforge.net/
+[Tokyocabinet homepage](http://tokyocabinet.sourceforge.net/)
 
 Support:
-- automatic replication
-- todo: automatic partitioning
-- todo: backup
-- todo: http api, erlang api ...
-- todo: map-reduce
+*   Automatic replication
+*   Todo: automatic partitioning
+*   Todo: backup
+*   Todo: http api, erlang api ...
+*   Todo: map-reduce
