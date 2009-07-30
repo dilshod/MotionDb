@@ -1,7 +1,7 @@
 -module(storage).
 -behaviour(gen_server2).
 
--export([start/0, put/2, get/1]).
+-export([start/0, put/2, get/1, remove/1, putdup/2, getdup/1, remove/2]).
 -export([start_link/4]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3, sync/2]).
 
@@ -32,6 +32,20 @@ put(Key, Value) ->
 
 get(Key) ->
   gen_server2:call(store, {get, Key, false}).
+
+remove(Key) ->
+  gen_server2:call(store, {remove, Key}).
+
+putdup(Key, Value) ->
+  gen_server2:call(store, {put, Key, Value, true}).
+
+getdup(Key) ->
+  gen_server2:call(store, {get, Key, true}).
+
+remove(Key, Value) ->
+  gen_server2:call(store, {remove, Key, Value}).
+
+
 
 
 start_link(Storage, ServerName, Path, Nodes) ->
@@ -76,22 +90,19 @@ init([ServerName, Storage, Path, Nodes]) ->
       {error, {error, Msg}}
   end.
 
-handle_call({put, Key, Value, AllowDuplication}, _From, State = #state{ulog=ULog, nodes=Nodes, name=ServerName}) ->
-  BinaryEvent = term_to_binary({Key, Value, AllowDuplication}),
-  Position = ULog#ulog.position,
-  {Goods, _Bads} = gen_server2:multi_call(multiply(Nodes, nodes(), []), ServerName, {event, Position, BinaryEvent}),
-  Any = lists:any(fun(Result) -> case Result of {_, ok} -> true; _ -> false end end, Goods),
-  if Any orelse length(Nodes) == 0 ->
-      handle_call({event, Position, BinaryEvent}, _From, State);
-    true ->
-      {reply, failed, State, State#state.sync_timeout}
-  end;
+handle_call(Event = {put, _Key, _Value, _AllowDuplication}, _From, State) ->
+  call_event(Event, State);
+
+handle_call(Event = {remove, _Key}, _From, State) ->
+  call_event(Event, State);
+
+handle_call(Event = {remove, _Key, _Value}, _From, State) ->
+  call_event(Event, State);
 
 handle_call({get, Key, WithDuplication}, _From, State = #state{storage=Storage, storage_instance=StorageInstance}) ->
   {reply, Storage:get(StorageInstance, Key, WithDuplication), State, State#state.sync_timeout};
 
 handle_call({event, Position, BinaryEvent}, _From, State = #state{ulog=ULog, storage=Storage, storage_instance=StorageInstance}) ->
-  {Key, Value, AllowDuplication} = binary_to_term(BinaryEvent),  
   if ULog#ulog.position == Position ->
       file:write(ULog#ulog.file, <<(size(BinaryEvent)):32, BinaryEvent/binary>>),
 
@@ -103,8 +114,7 @@ handle_call({event, Position, BinaryEvent}, _From, State = #state{ulog=ULog, sto
           ULog#ulog{position = Position + size(BinaryEvent) + 4}
       end,
 
-      Storage:put(StorageInstance, Key, Value, AllowDuplication),
-      Storage:put(StorageInstance, {'__motiondb__', last_position}, NewULog#ulog.position, false),
+      int_event(BinaryEvent, Storage, StorageInstance, NewULog#ulog.position),
       {reply, ok, State#state{ulog=NewULog, sync_timeout=?SYNC_TIMEOUT}, ?SYNC_TIMEOUT};
     true ->
       if ULog#ulog.position < Position ->
@@ -153,7 +163,6 @@ handle_info(timeout, State = #state{ulog=ULog, storage=Storage, storage_instance
       Storage:sync(StorageInstance)
     end
   ),
-  io:format("Sync to disc~n"),
   {noreply, State#state{sync_timeout=infinity}};
 
 handle_info(_Info, State) ->
@@ -238,11 +247,9 @@ local_sync(Path, Storage, StorageInstance, Position) ->
   end.
 
 local_sync_events(Storage, StorageInstance, Position, <<Size:32, Data/binary>>) ->
-  <<Event:Size/binary, Other/binary>> = Data,
-  {Key, Value, AllowDuplication} = binary_to_term(Event),    
-  Storage:put(StorageInstance, Key, Value, AllowDuplication),
-  Storage:put(StorageInstance, {'__motiondb__', last_position}, Position + 4 + size(Event), false),
-  local_sync_events(Storage, StorageInstance, Position + 4 + size(Event), Other);
+  <<BinaryEvent:Size/binary, Other/binary>> = Data,
+  int_event(BinaryEvent, Storage, StorageInstance, Position + 4 + size(BinaryEvent)),
+  local_sync_events(Storage, StorageInstance, Position + 4 + size(BinaryEvent), Other);
 
 local_sync_events(_Storage, _StorageInstance, Position, <<>>) ->
   Position.
@@ -270,6 +277,28 @@ local_read(Path, Position) ->
 %% ===================================================================
 %% Internal functions
 %% ===================================================================
+call_event(Event, State = #state{ulog=ULog, nodes=Nodes, name=ServerName}) ->
+  BinaryEvent = term_to_binary(Event),
+  Position = ULog#ulog.position,
+  {Goods, _Bads} = gen_server2:multi_call(multiply(Nodes, nodes(), []), ServerName, {event, Position, BinaryEvent}),
+  Any = lists:any(fun(Result) -> case Result of {_, ok} -> true; _ -> false end end, Goods),
+  if Any orelse length(Nodes) == 0 ->
+      handle_call({event, Position, BinaryEvent}, self(), State);
+    true ->
+      {reply, failed, State, State#state.sync_timeout}
+  end.
+
+int_event(BinaryEvent, Storage, StorageInstance, Position) ->
+  case binary_to_term(BinaryEvent) of
+    {put, Key, Value, AllowDuplication} ->
+      Storage:put(StorageInstance, Key, Value, AllowDuplication);
+    {remove, Key} ->
+      Storage:remove(StorageInstance, Key);
+    {remove, Key, Value} ->
+      Storage:remove(StorageInstance, Key, Value)
+  end,
+  Storage:put(StorageInstance, {'__motiondb__', last_position}, Position, false).
+
 multiply([], _, Uniqs) -> Uniqs;
 multiply(_, [], Uniqs) -> Uniqs;
 multiply([Left | Lefts], Rights, Uniqs) ->

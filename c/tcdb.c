@@ -23,6 +23,7 @@
 #define INFO 11
 #define READ 12
 #define VANISH 13
+#define BACKUP 14
 
 #define MAX_KEY_SIZE 1024
 #define MAX_VALUE_SIZE 16384
@@ -274,11 +275,9 @@ static int control(ErlDrvData handle, unsigned int command, char* buf, int count
         while (!removed && !not_found) {
           int cur_key_size, cur_val_size;
           const void *curkey = tcbdbcurkey3(cur, &cur_key_size);
-          printf("%p %p \r\n", curkey, key);
           if (cur_key_size == key_size && memcmp(curkey, key, key_size) == 0) {
             const void *curval = tcbdbcurval3(cur, &cur_val_size);
             if (cur_val_size == value_size && memcmp(curval, value, value_size) == 0) {
-              printf("Removed\r\n");
               tcbdbcurout(cur);
               removed = true;
             } else
