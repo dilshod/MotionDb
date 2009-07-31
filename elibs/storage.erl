@@ -280,7 +280,7 @@ local_read(Path, Position) ->
 call_event(Event, State = #state{ulog=ULog, nodes=Nodes, name=ServerName}) ->
   BinaryEvent = term_to_binary(Event),
   Position = ULog#ulog.position,
-  {Goods, _Bads} = gen_server2:multi_call(multiply(Nodes, nodes(), []), ServerName, {event, Position, BinaryEvent}),
+  {Goods, _Bads} = gen_server2:multi_call(motiondb:multiply(Nodes, nodes([visible])), ServerName, {event, Position, BinaryEvent}),
   Any = lists:any(fun(Result) -> case Result of {_, ok} -> true; _ -> false end end, Goods),
   if Any orelse length(Nodes) == 0 ->
       handle_call({event, Position, BinaryEvent}, self(), State);
@@ -298,11 +298,3 @@ int_event(BinaryEvent, Storage, StorageInstance, Position) ->
       Storage:remove(StorageInstance, Key, Value)
   end,
   Storage:put(StorageInstance, {'__motiondb__', last_position}, Position, false).
-
-multiply([], _, Uniqs) -> Uniqs;
-multiply(_, [], Uniqs) -> Uniqs;
-multiply([Left | Lefts], Rights, Uniqs) ->
-  case Rights -- [Left] of
-    Rights -> multiply(Lefts, Rights, Uniqs);
-    _ -> multiply(Lefts, Rights, [Left | Uniqs])
-  end.

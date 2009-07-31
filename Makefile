@@ -1,5 +1,5 @@
 
-all: lib/tcdb.o ebin/gen_server2.beam ebin/mdb.app
+all: lib/tcdb.o ebin/gen_server2.beam ebin/motiondb.app
 	erlc -o ebin/ -pa ebin/ elibs/*.erl
 
 lib/tcdb.o:
@@ -8,8 +8,8 @@ lib/tcdb.o:
 ebin/gen_server2.beam: elibs/gen_server2.erl
 	erlc -o ebin elibs/gen_server2.erl
 
-ebin/mdb.app: elibs/mdb.app
-	cp elibs/mdb.app ebin/mdb.app
+ebin/motiondb.app: elibs/motiondb.app
+	cp elibs/motiondb.app ebin/motiondb.app
 
 clean:
 	$(MAKE) -C c clean

@@ -1,4 +1,4 @@
--module(mdb_app).
+-module(motiondb_app).
 -behaviour(application).
 
 %% Application callbacks

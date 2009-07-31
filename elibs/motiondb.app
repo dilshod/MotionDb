@@ -3,7 +3,7 @@
   {mod, {mdb_app, []}},
   {vsn, "?VERSION"},
   {modules, [
-      mdb_app
+      motiondb_app
   ]},
   {registered, []},
   {applications, [kernel, stdlib, sasl, crypto]}

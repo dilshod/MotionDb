@@ -9,7 +9,6 @@ a. Storages
   4. * Synchronization
   5. * Storage API for removing records
   6. Implement master-slave replication access, it should choose another active slave if master fails
-  7. Join node to replication on the fly
   8. Write unit tests for storages
 
 b. Router
@@ -29,7 +28,8 @@ Milestones for 0.0.2 version
 ====
 
 a. Storages
-  1. Integrate Lua
+  1. Join node to replication on the fly
+  2. Integrate Lua
 
 b. Router
 
