@@ -25,7 +25,7 @@ start(_Type, []) ->
           ok = file:write_file(Location, list_to_binary(Pid));
       undefined -> ok
   end,
-  ok.
+  motiondb_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @spec stop(State) -> void()

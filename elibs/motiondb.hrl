@@ -1,4 +1,6 @@
 
+-define(SHUTDOWN_WAITING_TIME, 2000).
+
 -record(config, {
   partitions,
   storage,
@@ -8,5 +10,6 @@
 -record(partition, {
   key,
   key_bits,
-  nodes
+  nodes,
+  right_partition = none
 }).

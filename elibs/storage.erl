@@ -1,7 +1,6 @@
 -module(storage).
 -behaviour(gen_server2).
 
--export([start/0, put/2, get/1, remove/1, putdup/2, getdup/1, remove/2]).
 -export([start_link/4]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3, sync/2]).
 
@@ -19,42 +18,16 @@
   path,
   nodes,
   ulog,
-  sync_timeout
+  sync_timeout,
+  state
 }).
 
 
-start() ->
-  Path = "/tmp/main/" ++ atom_to_list(node()),
-  start_link(storage_tc, store, Path, [a@localhost, b@localhost, c@localhost]).
-
-put(Key, Value) ->
-  gen_server2:call(store, {put, Key, Value, false}).
-
-get(Key) ->
-  gen_server2:call(store, {get, Key, false}).
-
-remove(Key) ->
-  gen_server2:call(store, {remove, Key}).
-
-putdup(Key, Value) ->
-  gen_server2:call(store, {put, Key, Value, true}).
-
-getdup(Key) ->
-  gen_server2:call(store, {get, Key, true}).
-
-remove(Key, Value) ->
-  gen_server2:call(store, {remove, Key, Value}).
-
-
-
-
 start_link(Storage, ServerName, Path, Nodes) ->
-  ets:new(motiondb, [set, named_table, public]),
-
-  ets:insert(motiondb, {state, down}),
   RemoteNodes = lists:delete(node(), Nodes),
   Pid = gen_server2:start_link({local, ServerName}, ?MODULE, [ServerName, Storage, Path, RemoteNodes], []),
   sync(ServerName, RemoteNodes),
+  turn_on(ServerName, RemoteNodes),
   Pid.
 
 init([ServerName, Storage, Path, Nodes]) ->
@@ -84,7 +57,7 @@ init([ServerName, Storage, Path, Nodes]) ->
 
       {ok, #state{
         name=ServerName, storage=Storage, storage_instance=StorageInstance, ulog=ULog, path=Path, nodes=Nodes,
-        sync_timeout=infinity
+        sync_timeout=infinity, state=down
       }};
     {error, Msg} ->
       {error, {error, Msg}}
@@ -100,7 +73,12 @@ handle_call(Event = {remove, _Key, _Value}, _From, State) ->
   call_event(Event, State);
 
 handle_call({get, Key, WithDuplication}, _From, State = #state{storage=Storage, storage_instance=StorageInstance}) ->
-  {reply, Storage:get(StorageInstance, Key, WithDuplication), State, State#state.sync_timeout};
+  case State#state.state of
+    up ->
+      {reply, Storage:get(StorageInstance, Key, WithDuplication), State, State#state.sync_timeout};
+    _ ->
+      {reply, {error, nodedown}, State, State#state.sync_timeout}
+  end;
 
 handle_call({event, Position, BinaryEvent}, _From, State = #state{ulog=ULog, storage=Storage, storage_instance=StorageInstance}) ->
   if ULog#ulog.position == Position ->
@@ -124,9 +102,14 @@ handle_call({event, Position, BinaryEvent}, _From, State = #state{ulog=ULog, sto
       end
   end;
 
+handle_call(turn_up, _From, State) ->
+  {reply, ok, State#state{state=up}, State#state.sync_timeout};
+
+handle_call(turn_down, _From, State) ->
+  {reply, ok, State#state{state=down}, State#state.sync_timeout};
+
 handle_call(is_up, _From, State) ->
-  [{state, MdbState}] = ets:lookup(motiondb, state),
-  {reply, {ok, MdbState == up}, State, State#state.sync_timeout};
+  {reply, {ok, State#state.state == up}, State, State#state.sync_timeout};
 
 handle_call(log_position, _From, State = #state{ulog=ULog}) ->
   {reply, {ok, ULog#ulog.position}, State, State#state.sync_timeout};
@@ -186,9 +169,9 @@ sync(ServerName, [RemoteNode | RemoteNodes]) ->
       case sync_with_server(ServerName, {ServerName, RemoteNode}) of
         ok when IsUp ->
           io:format("Sync ok, db is up now~n"),
-          ets:insert(motiondb, {state, up});
+          ok = gen_server2:call(ServerName, turn_up);
         ok ->
-          io:format("Sync ok, but db is not up yet~n");
+          sync(ServerName, RemoteNodes);
         failed ->
           sync(ServerName, RemoteNodes)
       end;
@@ -219,6 +202,30 @@ sync_events(LocalServer, Position, <<Size:32, Data/binary>>) ->
 
 sync_events(_LocalServer, _Position, <<>>) ->
   ok.
+
+turn_on(ServerName, RemoteNodes) ->
+  case gen_server2:call(ServerName, is_up) of
+    {ok, true} -> ok;
+    {ok, false} ->
+      case lists:all(
+          fun(Node) ->
+            case catch(gen_server2:call({ServerName, Node}, is_up)) of {ok, false} -> true; _ -> false end
+          end,
+          RemoteNodes
+        ) of
+        true ->
+          gen_server2:call(ServerName, turn_up),
+          lists:foreach(
+            fun(Node) ->
+              spawn(Node, storage, sync, [ServerName, [node() | lists:delete(Node, RemoteNodes)]])
+            end,
+            RemoteNodes
+          ),
+          ok;
+        _ ->
+          failed
+      end
+  end.
 
 %% ===================================================================
 %% Local sync

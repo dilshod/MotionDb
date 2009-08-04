@@ -1,5 +1,5 @@
 
-Milestone for 0.0.1 version
+Milestone for 0.0.1 version (2009-Jul-27 - )
 ====
 
 a. Storages
@@ -8,11 +8,11 @@ a. Storages
   3. * Replication
   4. * Synchronization
   5. * Storage API for removing records
-  6. Implement master-slave replication access, it should choose another active slave if master fails
+  6. * Implement master-slave replication access, it should choose another active slave if master fails
   8. Write unit tests for storages
 
 b. Router
-  1. Implement mediator
+  1. * Implement mediator
   2. Write unit tests for routing
 
 c. Paritition
@@ -24,12 +24,27 @@ d. Interfaces
   2. Write unit tests for erlang api
 
 
-Milestones for 0.0.2 version
+Milestone for 0.0.2 version
 ====
 
 a. Storages
-  1. Join node to replication on the fly
-  2. Integrate Lua
+  1. Join replication
+  2. Remove node from replication
+
+c. Partition
+  1. Create Partition
+  2. Remove Partition
+
+d. Interfaces
+  1. Intergrate yaws
+  2. Web management intarface (port 14000)
+
+
+Milestone for 0.0.3 version
+====
+
+a. Storages
+  1. Integrate Lua
 
 b. Router
 
