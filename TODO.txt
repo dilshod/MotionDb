@@ -12,7 +12,7 @@ a. Storages
   8. Write unit tests for storages
 
 b. Router
-  1. * Implement mediator
+  1. * Implement router
   2. Write unit tests for routing
 
 c. Paritition
@@ -41,6 +41,13 @@ d. Interfaces
 
 
 Milestone for 0.0.3 version
+====
+
+a. Storage
+  1. Transactions support
+
+
+Milestone for 0.0.4 version
 ====
 
 a. Storages

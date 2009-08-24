@@ -9,7 +9,7 @@ start_link() ->
 init([]) ->
     Flags = {one_for_one, 2, 10},
     Children = [
-      worker_spec(motiondb, motiondb, []),
+      worker_spec(motiondb_schema, motiondb_schema, []),
       supervisor_spec(storage_sup, storage_sup, [])
     ],
     {ok, {Flags, Children}}.

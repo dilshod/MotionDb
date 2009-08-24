@@ -1,10 +1,12 @@
 
 -define(SHUTDOWN_WAITING_TIME, 2000).
 
--record(config, {
+-record(schema, {
+  version,
   partitions,
   storage,
-  datapath
+  datapath,
+  state
 }).
 
 -record(partition, {

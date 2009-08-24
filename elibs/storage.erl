@@ -80,13 +80,26 @@ handle_call({get, Key, WithDuplication}, _From, State = #state{storage=Storage, 
       {reply, {error, nodedown}, State, State#state.sync_timeout}
   end;
 
-handle_call({event, Position, BinaryEvent}, _From, State = #state{ulog=ULog, storage=Storage, storage_instance=StorageInstance}) ->
+handle_call({event, Position, BinaryEvent}, _From, State = #state{ulog=ULog, storage=Storage, storage_instance=StorageInstance, path=Path}) ->
   if ULog#ulog.position == Position ->
       file:write(ULog#ulog.file, <<(size(BinaryEvent)):32, BinaryEvent/binary>>),
 
       NewULog = if (Position + size(BinaryEvent) + 4) bsr 24 =/= Position bsr 24 ->
           file:close(ULog#ulog.file),
-          {ok, NewFile} = file:open(integer_to_list((Position bsr 24) + 1) ++ ".ulog"),
+          % remove old ulog files
+          spawn(
+            fun() ->
+              case gen_server2:call(motiondb_schema, is_replica_nodes_up) of
+                true when (Position bsr 24) > 0 ->
+                  lists:foreach(
+                    fun(I) -> file:delete(filename:join([Path, integer_to_list(I) ++ ".ulog"])) end,
+                    lists:seq(0, (Position bsr 24) - 1)
+                  );
+                _ -> ok
+              end
+            end
+          ),
+          {ok, NewFile} = file:open(filename:join([Path, integer_to_list((Position bsr 24) + 1) ++ ".ulog"]), [read, write, binary]),
           #ulog{file = NewFile, position = ((Position bsr 24) + 1) bsl 24};
         true ->
           ULog#ulog{position = Position + size(BinaryEvent) + 4}
@@ -287,7 +300,7 @@ local_read(Path, Position) ->
 call_event(Event, State = #state{ulog=ULog, nodes=Nodes, name=ServerName}) ->
   BinaryEvent = term_to_binary(Event),
   Position = ULog#ulog.position,
-  {Goods, _Bads} = gen_server2:multi_call(motiondb:multiply(Nodes, nodes([visible])), ServerName, {event, Position, BinaryEvent}),
+  {Goods, _Bads} = gen_server2:multi_call(motiondb_schema:multiply(Nodes, nodes([visible])), ServerName, {event, Position, BinaryEvent}),
   Any = lists:any(fun(Result) -> case Result of {_, ok} -> true; _ -> false end end, Goods),
   if Any orelse length(Nodes) == 0 ->
       handle_call({event, Position, BinaryEvent}, self(), State);

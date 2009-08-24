@@ -7,11 +7,10 @@ start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 init([]) ->
-    [{state, State}] = ets:lookup(motiondb, state),
-    io:format("~p~n", [State]),
-    Path = filename:join([State#config.datapath, atom_to_list(node())]),
+    [Schema] = ets:lookup(motiondb, schema),
+    Path = filename:join([filename:dirname(code:which(storage_sup)), "..", "database", atom_to_list(node())]),
     file:make_dir(Path),
-    Partition = motiondb:current_partition(State),
+    Partition = motiondb_schema:current_partition(Schema),
 
     Children = lists:map(
       fun(I) ->
@@ -25,5 +24,4 @@ init([]) ->
       end,
       lists:seq(0, 15)
     ),
-    io:format("~p~n", [Children]),
     {ok, {{one_for_one,10,1}, Children}}.
