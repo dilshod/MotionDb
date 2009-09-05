@@ -1,0 +1,4 @@
+lib/*
+database/*
+c/*.o
+ebin/*
