@@ -1,0 +1,39 @@
+
+= MotionDB
+
+== DESCRIPTION
+
+Distributed key-value storage based on Tokyocabinet and written on Erlang.
+Tokyocabinet homepage: http://tokyocabinet.sourceforge.net/
+
+== FEATURES:
+
+- replication and partitioning
+- TODO: transaction support
+- TODO: REST api, erlang api ...
+- TODO: map-reduce through lua (or javascript)
+
+== GETTING STARTED:
+
+Building:
+
+# make
+...
+
+Running:
+
+# ./bin/motiondb first@localhost
+
+
+Using:
+
+# erl -pa ebin/ -sname a@localhost
+> motiondb:start().
+ok.
+> schema:new_partition([a@localhost]).
+ok.
+> motiondb:put(1, 2).
+ok.
+> motiondb:get(1).
+{ok, 2}.
+> 

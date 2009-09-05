@@ -1,0 +1,18 @@
+
+v0.1.0:
+ - Storage (automatic recovery, join node, migrate)
+ - TODO: log files remover
+ - Tests for storage and misc functions
+ - Schema (on the fly create new partition, remove partition, join node, remove node)
+ - Tests for schema
+ - TODO: Stress check tests
+
+v0.2.0:
+ - TODO: Bulk operations
+ - TODO: Lua (Javascript) map-reduce support
+ - TODO: Transaction support
+ - TODO: Stat. collector
+
+v0.3.0:
+ - TODO: Web admin interface
+ - TODO: Benchmarks
